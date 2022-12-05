@@ -41,21 +41,6 @@ export function App() {
               setBalance(formattedBalance + ' eth');
             });
 
-          // example address with more than 5 histories
-          // 0x84d34f4f83a87596cd3fb6887cff8f17bf5a7b83
-          // query latest 5 activity
-          const sampleContractAddress = '';
-          const sampleAccountAddress = '0x84d34f4f83a87596cd3fb6887cff8f17bf5a7b83';
-          // const getTransactionHistoryContract = new web3.eth.Contract(transactionHistoryContract, sampleAccountAddress);
-
-
-          // // sample transaction hash is 0xb7b0211af2271dccf2199f71a5b9f00b52b6c2317650ee54be032c5f13197e94
-          // const sampleTransactionHash = '0xb7b0211af2271dccf2199f71a5b9f00b52b6c2317650ee54be032c5f13197e94';
-          // web3.eth.getTransaction(sampleTransactionHash)
-          //   .then((result) => {
-          //     console.log('transaction hash result is:', result);
-          //   });
-
 
         });
     } else {
