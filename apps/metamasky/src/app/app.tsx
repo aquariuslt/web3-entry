@@ -1,147 +1,61 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import styles from './app.module.less';
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Code, Input, Page, Table, Text, useInput } from '@geist-ui/core';
+import { Button, Card, Code, Input, Page, Spacer, Table, Text, useInput } from '@geist-ui/core';
 import Web3 from 'web3';
+import { connectAndGetMetaMaskAccountAddress, signMetaMaskMessageRequest } from '../api/metamask.api';
+import { getBalance } from '../api/web3.api';
+import { getTransactionListByAddress } from '../api/etherscan.api';
 
 const web3 = new Web3(Web3.givenProvider);
 
 
-const ETHERSCAN_IO_APIKEY = 'SUHHUI7DZRPG9ZXTT3Y9A296Q2TTG2VRSU';
+const SIGN_MESSAGE_PLACEHOLDER = 'Message from MetaMask';
 
 export function App() {
 
+  const [connected, setConnected] = useState<boolean>(false);
   const [address, setAddress] = useState<string>('');
   const [balance, setBalance] = useState<string>('');
   const {
     state: signValue,
-    setState: setSignValue,
-    reset: resetSignValue,
     bindings: signValueBindings
-  } = useInput('');
+  } = useInput(SIGN_MESSAGE_PLACEHOLDER);
   const [signResult, setSignResult] = useState<string>('');
   const [latestRawActivity, setLatestRawActivity] = useState<any[]>([]);
 
-  const connectMetaMask = () => {
-    if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.request({ method: 'eth_requestAccounts' })
-        .then((accounts: any[]) => {
-          // get account info
-          const account = accounts[0];
-          setAddress(account);
-          console.log('request account with:', account);
-
-          // query and shows balances
-          web3.eth.getBalance(account)
-            .then((balance: string) => {
-              const formattedBalance = web3.utils.fromWei(balance);
-              console.log('balance is :', balance);
-              console.log('formatted balance is: ');
-              setBalance(formattedBalance + ' eth');
-            });
-
-
-        });
-    } else {
-      // perform warning
-      console.log('MetaMask is installed!');
-    }
-
+  const connectMetaMask = async () => {
+    const addressResult = await connectAndGetMetaMaskAccountAddress();
+    setConnected(true);
+    setAddress(addressResult);
+    const balanceResult = await getBalance(addressResult);
+    setBalance(balanceResult);
   };
 
-  const performSign = () => {
+  const sendSignMessage = async () => {
     console.log('sign with value:', signValue, web3.utils.utf8ToHex(signValue), 'with address:', address);
 
-
-    const messageParams = JSON.stringify({
-      domain: {
-        chainId: 1,
-        name: 'Simple Sign Message',
-        version: '1',
-        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
-      },
-      message: {
-        contents: signValue
-      },
-      primaryType: 'Mail',
-      types: {
-        // TODO: Clarify if EIP712Domain refers to the domain the contract is hosted on
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' }
-        ],
-        // Not an EIP712Domain definition
-        Group: [
-          { name: 'name', type: 'string' },
-          { name: 'members', type: 'Person[]' }
-        ],
-        // Refer to PrimaryType
-        Mail: [
-          { name: 'contents', type: 'string' }
-        ],
-        // Not an EIP712Domain definition
-        Person: [
-          { name: 'name', type: 'string' }
-        ]
-      }
-    });
-
-    const params = [address, messageParams];
-    const signMethod = 'eth_signTypedData_v4';
-
-    window.ethereum.request({
-      method: signMethod,
-      params: params
-    }).then((result: string) => {
-      console.log('sign result:', result);
-      setSignResult(result);
-    }).catch((error: any) => {
-      console.warn('sign error:', error);
-    })
-    ;
-
+    const signResult = await signMetaMaskMessageRequest(address, signValue);
+    setSignResult(signResult);
   };
 
-  const queryTransactionHistory = () => {
+  const queryTransactionHistory = async () => {
     console.log('query transaction history using eth.filter for address:', address);
 
-
-    // using etherscan api-key limited api
-
-    // fetch etherscan api
-    const txEndpointUrl = `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${ETHERSCAN_IO_APIKEY}`;
-    fetch(txEndpointUrl, {
-      mode: 'cors'
-    })
-      .then((response) => {
-        return response.json();
-      })
-      .then((res) => {
-        const activities = res.result;
-        const filteredActivities = activities.slice(0, 5);
-        console.log(`tx history result:`, JSON.stringify(filteredActivities));
-
-        setLatestRawActivity(filteredActivities);
-        const transactionHashList = filteredActivities.map((item: { hash: string; }) => item.hash);
-
-
-      })
-    ;
+    const txHistories = await getTransactionListByAddress(address);
+    const latestActivities = txHistories.slice(0, 5);
+    setLatestRawActivity(latestActivities);
   };
 
-  const disconnectMetaMask = () => {
-    console.log('disconnect MetaMask just hard-reloading all page');
-    location.reload();
+  const disconnect = () => {
+    disconnect();
   };
 
   useEffect(() => {
-    if (signResult !== '') {
+    if (address !== '') {
       console.log('query latest transaction history');
-      queryTransactionHistory();
+      queryTransactionHistory()
+        .then();
     }
-  }, [signResult]);
+  }, [address]);
 
 
   return (
@@ -149,19 +63,35 @@ export function App() {
       <Text h1>MetaMasky</Text>
 
 
-      <Text>1. Connect MetaMask & GetBalance</Text>
-      <Button onClick={connectMetaMask}>Connect</Button>
-      <Text>2. Balance: {balance} </Text>
+      <Text h3>1. Connect MetaMask & GetBalance</Text>
+      <Button
+        onClick={connectMetaMask}
+        disabled={connected}
+        type={connected ? 'default' : 'success'}
+      >
+        {
+          connected ? 'Connected' : 'Connect'
+        }
+      </Button>
 
-      <Text>3. Input and Sign with JSON-RPC</Text>
+      <Spacer />
+
+      <Text h3>2. Account Details</Text>
+      <Text>Address: {address}</Text>
+      <Text>Balance: {balance}</Text>
+
+      <Text h3>3. Input and Sign with JSON-RPC</Text>
 
       <div style={{
         marginBottom: 5
       }}>
-        <Input placeholder={'Input Here'} {...signValueBindings} />
+        <Input placeholder={SIGN_MESSAGE_PLACEHOLDER}
+               disabled={!connected}
+               width='100%'
+               {...signValueBindings} />
       </div>
       <div>
-        <Button onClick={performSign}>Sign</Button>
+        <Button onClick={sendSignMessage}>Sign & Send Message</Button>
       </div>
       <Text>Sign Result:</Text>
 
@@ -174,10 +104,12 @@ export function App() {
         </Card>
       }
 
-      <Text>4. Latest Activity </Text>
+      <Spacer />
+      <Text h3>4. Latest Activity </Text>
 
       <Table data={latestRawActivity}>
-        {/*<Table.Column prop='timeStamp' label='TimeStamp' />*/}
+        <Table.Column prop='timeStamp' label='TimeStamp'
+                      render={(raw) => <p>{(new Date(Number(raw) * 1000).toDateString())}</p>} />
         <Table.Column prop='from' label='From' />
         <Table.Column prop='to' label='To' />
         <Table.Column prop='value' label='Value' render={(raw) => <p> {web3.utils.fromWei(raw)} eth</p>} />
@@ -186,9 +118,9 @@ export function App() {
         <Table.Column prop='gas' label='Gas' />
       </Table>
 
-
-      <Text>5. Disconnect MetaMask</Text>
-      <Button onClick={disconnectMetaMask} type='warning'>Disconnect MetaMask</Button>
+      <Spacer />
+      <Text h3>5. Disconnect MetaMask</Text>
+      <Button onClick={disconnect} type='warning'>Disconnect MetaMask</Button>
     </Page>
   );
 }
