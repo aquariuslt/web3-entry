@@ -1,31 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styles from './app.module.less';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Card, Input, Page, Text, useInput } from '@geist-ui/core';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
 
 const web3 = new Web3(Web3.givenProvider);
 
-const transactionHistoryContract: AbiItem[] = [
-  {
-    constant: false,
-    type: 'function',
-    payable: false,
-    name: 'transfer',
-    inputs: [
-      {
-        name: '_to',
-        type: 'address'
-      },
-      {
-        name: '_value',
-        type: 'unit256'
-      }
-    ],
-    outputs: []
-  }
-];
+
+const ETHERSCAN_IO_APIKEY = 'SUHHUI7DZRPG9ZXTT3Y9A296Q2TTG2VRSU';
 
 export function App() {
 
@@ -38,6 +21,7 @@ export function App() {
     bindings: signValueBindings
   } = useInput('');
   const [signResult, setSignResult] = useState<string>('');
+  const [latestRawActivity, setLatestRawActivity] = useState<string>('');
 
   const connectMetaMask = () => {
     if (typeof window.ethereum !== 'undefined') {
@@ -65,12 +49,12 @@ export function App() {
           // const getTransactionHistoryContract = new web3.eth.Contract(transactionHistoryContract, sampleAccountAddress);
 
 
-          // sample transaction hash is 0xb7b0211af2271dccf2199f71a5b9f00b52b6c2317650ee54be032c5f13197e94
-          const sampleTransactionHash = '0xb7b0211af2271dccf2199f71a5b9f00b52b6c2317650ee54be032c5f13197e94';
-          web3.eth.getTransaction(sampleTransactionHash)
-            .then((result) => {
-              console.log('transaction hash result is:', result);
-            });
+          // // sample transaction hash is 0xb7b0211af2271dccf2199f71a5b9f00b52b6c2317650ee54be032c5f13197e94
+          // const sampleTransactionHash = '0xb7b0211af2271dccf2199f71a5b9f00b52b6c2317650ee54be032c5f13197e94';
+          // web3.eth.getTransaction(sampleTransactionHash)
+          //   .then((result) => {
+          //     console.log('transaction hash result is:', result);
+          //   });
 
 
         });
@@ -87,7 +71,7 @@ export function App() {
 
     const messageParams = JSON.stringify({
       domain: {
-        chainId: 5,
+        chainId: 1,
         name: 'Ether Mail',
         version: '1',
         verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
@@ -136,10 +120,58 @@ export function App() {
 
   };
 
-  const disconnectMetaMask = ()=>{
+  const queryTransactionHistory = () => {
+    console.log('query transaction history using eth.filter for address:', address);
+
+
+    web3.eth.getTransactionCount(address)
+      .then((result) => {
+        console.log('transaction count for address:', address, 'is:', result);
+      })
+      .catch(console.error)
+    ;
+
+    web3.eth.getPastLogs({
+      fromBlock: 'earliest',
+      toBlock: 'latest',
+      address: address
+    })
+      .then((result) => {
+        console.log('past log for address:', address, 'is:', result);
+      })
+      .catch(console.error);
+
+
+    // using etherscan api-key limited api
+
+    // fetch etherscan api
+    const txEndpointUrl = `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${ETHERSCAN_IO_APIKEY}`;
+    fetch(txEndpointUrl, {
+      mode: 'cors'
+    })
+      .then((response) => {
+        return response.json()
+      })
+      .then((res)=>{
+        const activities = res.result;
+        const filteredActivities = activities.slice(0,5);
+        console.log(`tx history result:`, JSON.stringify(filteredActivities));
+        setLatestRawActivity(JSON.stringify(filteredActivities));
+      })
+    ;
+  };
+
+  const disconnectMetaMask = () => {
     console.log('disconnect MetaMask just hard-reloading all page');
     location.reload();
-  }
+  };
+
+  useEffect(() => {
+    if (signResult !== '') {
+      console.log('query latest transaction history');
+      queryTransactionHistory();
+    }
+  }, [signResult]);
 
 
   return (
@@ -164,8 +196,14 @@ export function App() {
       <Text>Sign Result: {signResult}</Text>
 
 
+      <Text>4. Latest Activity </Text>
+      <Text>
+        {latestRawActivity}
+      </Text>
+
+
       <Text>5. Disconnect MetaMask</Text>
-      <Button onClick={disconnectMetaMask} type="warning">Disconnect MetaMask</Button>
+      <Button onClick={disconnectMetaMask} type='warning'>Disconnect MetaMask</Button>
     </Page>
   );
 }
