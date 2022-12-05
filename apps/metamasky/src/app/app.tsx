@@ -56,7 +56,7 @@ export function App() {
     const messageParams = JSON.stringify({
       domain: {
         chainId: 1,
-        name: 'Ether Mail',
+        name: 'Simple Sign Message',
         version: '1',
         verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
       },
@@ -106,24 +106,6 @@ export function App() {
 
   const queryTransactionHistory = () => {
     console.log('query transaction history using eth.filter for address:', address);
-
-
-    web3.eth.getTransactionCount(address)
-      .then((result) => {
-        console.log('transaction count for address:', address, 'is:', result);
-      })
-      .catch(console.error)
-    ;
-
-    web3.eth.getPastLogs({
-      fromBlock: 'earliest',
-      toBlock: 'latest',
-      address: address
-    })
-      .then((result) => {
-        console.log('past log for address:', address, 'is:', result);
-      })
-      .catch(console.error);
 
 
     // using etherscan api-key limited api
