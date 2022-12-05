@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styles from './app.module.less';
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Input, Page, Table, Text, useInput } from '@geist-ui/core';
+import { Button, Card, Code, Input, Page, Table, Text, useInput } from '@geist-ui/core';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
 
@@ -21,7 +21,7 @@ export function App() {
     bindings: signValueBindings
   } = useInput('');
   const [signResult, setSignResult] = useState<string>('');
-  const [latestRawActivity, setLatestRawActivity] = useState([]);
+  const [latestRawActivity, setLatestRawActivity] = useState<any[]>([]);
 
   const connectMetaMask = () => {
     if (typeof window.ethereum !== 'undefined') {
@@ -38,7 +38,7 @@ export function App() {
               const formattedBalance = web3.utils.fromWei(balance);
               console.log('balance is :', balance);
               console.log('formatted balance is: ');
-              setBalance(formattedBalance);
+              setBalance(formattedBalance + ' eth');
             });
 
           // example address with more than 5 histories
@@ -156,7 +156,22 @@ export function App() {
         const activities = res.result;
         const filteredActivities = activities.slice(0, 5);
         console.log(`tx history result:`, JSON.stringify(filteredActivities));
-        setLatestRawActivity(filteredActivities);
+
+
+        const transactionHashList = filteredActivities.map((item: { hash: string; }) => item.hash);
+
+
+        Promise.all(transactionHashList.map((txHash: string) => {
+          return new Promise(resolve => {
+            web3.eth.getTransaction(txHash)
+              .then((txDetail) => resolve(txDetail));
+          });
+        })).then((txDetailList) => {
+          console.log('TX detail list:', txDetailList);
+          setLatestRawActivity(txDetailList);
+        })
+
+        ;
       })
     ;
   };
@@ -193,16 +208,27 @@ export function App() {
       <div>
         <Button onClick={performSign}>Sign</Button>
       </div>
-      <Text>Sign Result: {signResult}</Text>
+      <Text>Sign Result:</Text>
 
+      {
+        signResult &&
+        <Card>
+          <Code style={{
+            wordWrap: 'break-word'
+          }}> {signResult}</Code>
+        </Card>
+      }
 
       <Text>4. Latest Activity </Text>
 
       <Table data={latestRawActivity}>
-        <Table.Column prop="blockNumber" label="Block Number" />
-        <Table.Column prop="timeStamp" label="TimeStamp" />
-        <Table.Column prop="hash" label="Tx. Hash" />
-        <Table.Column prop="gas" label="Gas" />
+        {/*<Table.Column prop='timeStamp' label='TimeStamp' />*/}
+        <Table.Column prop='from' label='From' />
+        <Table.Column prop='to' label='To' />
+        <Table.Column prop='value' label='Value' render={(raw) => <p> {web3.utils.fromWei(raw)} eth</p>} />
+        <Table.Column prop='blockNumber' label='Block Number' />
+        <Table.Column prop='hash' label='Tx. Hash' />
+        <Table.Column prop='gas' label='Gas' />
       </Table>
 
 
