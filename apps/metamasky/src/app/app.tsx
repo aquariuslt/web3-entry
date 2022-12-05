@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styles from './app.module.less';
 import React, { useEffect, useState } from 'react';
-import { Button, Card, Input, Page, Text, useInput } from '@geist-ui/core';
+import { Button, Card, Input, Page, Table, Text, useInput } from '@geist-ui/core';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
 
@@ -21,7 +21,7 @@ export function App() {
     bindings: signValueBindings
   } = useInput('');
   const [signResult, setSignResult] = useState<string>('');
-  const [latestRawActivity, setLatestRawActivity] = useState<string>('');
+  const [latestRawActivity, setLatestRawActivity] = useState([]);
 
   const connectMetaMask = () => {
     if (typeof window.ethereum !== 'undefined') {
@@ -150,13 +150,13 @@ export function App() {
       mode: 'cors'
     })
       .then((response) => {
-        return response.json()
+        return response.json();
       })
-      .then((res)=>{
+      .then((res) => {
         const activities = res.result;
-        const filteredActivities = activities.slice(0,5);
+        const filteredActivities = activities.slice(0, 5);
         console.log(`tx history result:`, JSON.stringify(filteredActivities));
-        setLatestRawActivity(JSON.stringify(filteredActivities));
+        setLatestRawActivity(filteredActivities);
       })
     ;
   };
@@ -197,9 +197,13 @@ export function App() {
 
 
       <Text>4. Latest Activity </Text>
-      <Text>
-        {latestRawActivity}
-      </Text>
+
+      <Table data={latestRawActivity}>
+        <Table.Column prop="blockNumber" label="Block Number" />
+        <Table.Column prop="timeStamp" label="TimeStamp" />
+        <Table.Column prop="hash" label="Tx. Hash" />
+        <Table.Column prop="gas" label="Gas" />
+      </Table>
 
 
       <Text>5. Disconnect MetaMask</Text>
