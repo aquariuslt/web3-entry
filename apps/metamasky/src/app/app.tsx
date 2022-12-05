@@ -3,7 +3,6 @@ import styles from './app.module.less';
 import React, { useEffect, useState } from 'react';
 import { Button, Card, Code, Input, Page, Table, Text, useInput } from '@geist-ui/core';
 import Web3 from 'web3';
-import { AbiItem } from 'web3-utils';
 
 const web3 = new Web3(Web3.givenProvider);
 
@@ -142,21 +141,10 @@ export function App() {
         const filteredActivities = activities.slice(0, 5);
         console.log(`tx history result:`, JSON.stringify(filteredActivities));
 
-
+        setLatestRawActivity(filteredActivities);
         const transactionHashList = filteredActivities.map((item: { hash: string; }) => item.hash);
 
 
-        Promise.all(transactionHashList.map((txHash: string) => {
-          return new Promise(resolve => {
-            web3.eth.getTransaction(txHash)
-              .then((txDetail) => resolve(txDetail));
-          });
-        })).then((txDetailList) => {
-          console.log('TX detail list:', txDetailList);
-          setLatestRawActivity(txDetailList);
-        })
-
-        ;
       })
     ;
   };
